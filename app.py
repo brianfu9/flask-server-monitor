@@ -23,9 +23,10 @@ def chart_data():
             # Step 2: Get the last line
             raw_data = lines[-1] if lines else None
             
-            # Step 3: Open the file in write mode to truncate it
+            # Step 3: Open the file in write mode to truncate all but the last line
             with open(file_path, 'w') as file:
-                pass  # Opening in write mode with 'w' truncates the file
+                if lines:
+                    file.writelines(lines[-1])
             
             if not raw_data:
                 time.sleep(1)
@@ -36,7 +37,7 @@ def chart_data():
             json_data = json.dumps(
                 {
                     "frame": data[0],
-                    "time": data[1],
+                    "time": data[1].split(' ')[1],
                     "gpu_temp": data[2],
                     "cpu_temp": data[3],
                     "cpu_power": data[4],
@@ -53,4 +54,4 @@ def chart_data():
 
 
 if __name__ == '__main__':
-	app.run(host='0.0.0.0', port=5000)
+	app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)

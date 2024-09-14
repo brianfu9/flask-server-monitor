@@ -5,16 +5,34 @@
     <meta charset="UTF-8">
     <title>System Monitor</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="manifest" href="/static/manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #121212; /* Dark background */
+            color: #ffffff; /* Light text color */
+        }
+        .card {
+            background-color: #1e1e1e; /* Dark card background */
+            border-color: #333333; /* Dark card border */
+        }
+        .card-body {
+            color: #ffffff; /* Light text color */
+        }
+        .full-width {
+            width: 100%;
+            height: 100vh; /* Full viewport height */
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container">
+    <div class="container-fluid">
         <div class="row">
-            <div class="col-12">
+            <div class="col">
                 <div class="card">
                     <div class="card-body">
-                        <canvas id="canvas"></canvas>
+                        <canvas id="canvas" class="full-width"></canvas>
                     </div>
                 </div>
             </div>
@@ -25,6 +43,14 @@
     <!--suppress JSUnresolvedLibraryURL -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+                .then(function(registration) {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                }).catch(function(error) {
+                    console.log('Service Worker registration failed:', error);
+                });
+        }
         $(document).ready(function () {
             const config = {
                 type: 'line',
@@ -47,24 +73,32 @@
                     {
                         label: "CPU Power",
                         type: 'bar',
-                        // backgroundColor: 'rgb(75, 192, 192)',  // Green
-                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgb(255, 165, 79, 0.3)',  // Very desaturated orange
+                        borderColor: 'rgb(255, 165, 79)',
                         data: [],
                         fill: false,
                     }],
                 },
                 options: {
                     responsive: true,
-                    plugins: {
-                    },
+                    plugins: {},
                     scales: {
                         x: {
-                            position: 'bottom',
+                            ticks: {
+                                color: '#ffffff' // Light text color for x-axis
+                            },
+                            grid: {
+                                color: '#444444' // Dark grid line color for x-axis
+                            }
                         },
                         y: {
+                            ticks: {
+                                color: '#ffffff' // Light text color for y-axis
+                            },
+                            grid: {
+                                color: '#444444' // Dark grid line color for y-axis
+                            },
                             position: 'right',
-                            min: 0,
-                            max: 100,
                         }
                     }
                 }
