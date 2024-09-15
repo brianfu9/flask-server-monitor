@@ -3,31 +3,73 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, orientation=landscape">
     <title>System Monitor</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
     <link rel="manifest" href="/static/manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            background-color: #121212; /* Dark background */
-            color: #ffffff; /* Light text color */
+            background-color: #121212;
+            /* Dark background */
+            color: #ffffff;
+            /* Light text color */
         }
+
         .card {
-            background-color: #1e1e1e; /* Dark card background */
-            border-color: #333333; /* Dark card border */
+            background-color: #1e1e1e;
+            /* Dark card background */
+            border-color: #333333;
+            /* Dark card border */
         }
+
         .card-body {
-            color: #ffffff; /* Light text color */
+            color: #ffffff;
+            /* Light text color */
         }
+
         .full-width {
-            width: 100%;
-            height: 100vh; /* Full viewport height */
+            width: 100vh;
+            height: 90vh;
+            /* Full viewport height */
+        }
+
+        /* CSS to handle orientation */
+        @media screen and (orientation: portrait) {
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: #121212;
+                color: #ffffff;
+                text-align: center;
+            }
+
+            .landscape-only {
+                display: none;
+            }
+
+            .portrait-message {
+                display: block;
+            }
+        }
+
+        @media screen and (orientation: landscape) {
+            .landscape-only {
+                display: block;
+            }
+
+            .portrait-message {
+                display: none;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="container-fluid">
+    <div class="container-fluid landscape-only">
         <div class="row">
             <div class="col">
                 <div class="card">
@@ -45,12 +87,53 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/service-worker.js')
-                .then(function(registration) {
+                .then(function (registration) {
                     console.log('Service Worker registered with scope:', registration.scope);
-                }).catch(function(error) {
+                }).catch(function (error) {
                     console.log('Service Worker registration failed:', error);
                 });
         }
+
+        // Function to initialize and update the decibel meter
+        async function setupDecibelMeter(chart) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioContext.createAnalyser();
+                const microphone = audioContext.createMediaStreamSource(stream);
+                const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+
+                analyser.smoothingTimeConstant = 0.8;
+                analyser.fftSize = 1024;
+
+                microphone.connect(analyser);
+                analyser.connect(scriptProcessor);
+                scriptProcessor.connect(audioContext.destination);
+
+                let lastUpdateTime = Date.now();
+
+                scriptProcessor.onaudioprocess = function () {
+                    const array = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(array);
+
+                    let values = 0;
+                    const length = array.length;
+                    for (let i = 0; i < length; i++) {
+                        values += array[i];
+                    }
+
+                    const average = values / length;
+                    const decibels = 20 * Math.log10(average);
+                    chart.data.datasets[2].data[chart.data.datasets[2].data.length - 1] = decibels.toFixed(1);
+                    chart.update();
+                };
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                alert('Microphone access is required for the decibel meter to work.');
+            }
+        }
+
         $(document).ready(function () {
             const config = {
                 type: 'line',
@@ -71,21 +154,44 @@
                         fill: false,
                     },
                     {
+                        label: "Decibels",
+                        backgroundColor: 'rgb(59,180,23)', // Green for Decibels
+                        borderColor: 'rgb(59,180,23)',
+                        data: [],
+                        fill: false,
+                        yAxisID: 'y1',
+                    },
+                    {
                         label: "CPU Power",
                         type: 'bar',
                         backgroundColor: 'rgb(255, 165, 79, 0.3)',  // Very desaturated orange
                         borderColor: 'rgb(255, 165, 79)',
                         data: [],
                         fill: false,
-                    }],
+                    },
+                    ],
                 },
                 options: {
+                    animation: false,
                     responsive: true,
-                    plugins: {},
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            mode: 'index', // Include all items in the tooltip
+                            intersect: false, // Ensure tooltip includes all items
+                            bodyFont: {
+                                size: 24 // Increase tooltip font size
+                            },
+                        },
+                        // legend: {
+                        //     display: false // hide legend
+                        // }
+                    },
                     scales: {
                         x: {
                             ticks: {
-                                color: '#ffffff' // Light text color for x-axis
+                                color: '#ffffff', // Light text color for x-axis
+                                display: false,
                             },
                             grid: {
                                 color: '#444444' // Dark grid line color for x-axis
@@ -93,12 +199,34 @@
                         },
                         y: {
                             ticks: {
-                                color: '#ffffff' // Light text color for y-axis
+                                color: '#ffffff', // Light text color for y-axis
+                                font: {
+                                    size: 30 // Increase font size for y-axis labels
+                                }
                             },
                             grid: {
                                 color: '#444444' // Dark grid line color for y-axis
                             },
                             position: 'right',
+                        },
+                        y1: {
+                            type: 'logarithmic',
+                            display: true,
+                            position: 'right',
+                            ticks: {
+                                color: '#ffffff', // Light text color for y1-axis (decibels)
+                                font: {
+                                    size: 30 // Increase font size for y1-axis labels
+                                }
+                            },
+                            grid: {
+                                drawOnChartArea: false, // Only want the grid lines for one axis to show up
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Decibels',
+                                fontColor: '#ffffff'
+                            }
                         }
                     }
                 }
@@ -117,14 +245,18 @@
                     config.data.datasets[0].data.shift();
                     config.data.datasets[1].data.shift();
                     config.data.datasets[2].data.shift();
+                    config.data.datasets[3].data.shift();
                 }
                 config.data.labels.push(data.time);
                 config.data.datasets[0].data.push(data.gpu_temp);
                 config.data.datasets[1].data.push(data.cpu_temp);
-                config.data.datasets[2].data.push(data.cpu_power);
+                config.data.datasets[3].data.push(data.cpu_power);
+                config.data.datasets[2].data.push(config.data.datasets[2].data[config.data.datasets[2].data.length - 1]);
                 lineChart.update();
             }
+            setupDecibelMeter(lineChart);
         });
+
     </script>
 </body>
 
